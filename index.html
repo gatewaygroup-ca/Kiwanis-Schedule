@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Project Schedule</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ===== Top bar ===== -->
+  <div class="topbar">
+    <div class="brand-row">
+      <div class="brand-logo-slot" id="brandLogoSlot" style="display:none;">
+        <img id="brandLogoImg" alt="Company logo">
+      </div>
+      <div>
+        <div class="brand-eyebrow" id="projType">Residential Construction</div>
+        <div class="brand-title" id="projAddress">PROJECT ADDRESS</div>
+        <div class="brand-sub" id="projSubtitle">Project milestone schedule &amp; live tracker</div>
+      </div>
+    </div>
+    <div class="toolbar">
+      <select id="projectSwitcher" class="btn" title="Switch project" style="display:none;"></select>
+      <button class="btn admin-only" id="btnToggleHolidays">Holidays</button>
+      <button class="btn admin-only" id="btnImport">Import Excel / CSV</button>
+      <button class="btn" id="btnExport">Export Schedule</button>
+      <button class="btn admin-only" id="btnExportFinancials">Export Trade Financials</button>
+      <button class="btn danger admin-only" id="btnReset">Reset to Original Schedule</button>
+      <button class="btn primary admin-only" id="btnOpenAdminPanel">Admin Panel</button>
+      <button class="btn" id="btnLogin">Admin</button>
+      <button class="btn admin-only" id="btnLogout">Log Out</button>
+      <input type="file" id="csvFileInput" accept=".csv" style="display:none">
+      <input type="file" id="logoFileInput" accept="image/png,image/jpeg,image/webp" style="display:none">
+      <input type="file" id="galleryFileInput" accept="image/png,image/jpeg,image/webp" multiple style="display:none">
+    </div>
+  </div>
+
+  <!-- Holidays panel (toggle) -->
+  <div class="card holiday-panel" id="holidayPanel" style="margin-bottom:14px;">
+    <h2>Statutory Holidays (excluded from business-day calculations)</h2>
+    <div id="holidayList"></div>
+    <div class="holiday-add">
+      <input type="date" id="newHolidayDate">
+      <input type="text" id="newHolidayName" placeholder="Holiday name">
+      <button class="btn primary" id="btnAddHoliday">Add Holiday</button>
+    </div>
+  </div>
+
+  <!-- ===== Dashboard metrics ===== -->
+  <div class="metrics">
+    <div class="metric-card">
+      <div class="metric-label">Project Progress</div>
+      <div class="metric-value" id="metricProgress">—</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Days Remaining</div>
+      <div class="metric-value" id="metricDaysRemaining">—</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Projected Completion</div>
+      <div class="metric-value" id="metricProjected">—</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Schedule Status</div>
+      <div class="metric-value badge-text" id="metricStatus">—</div>
+      <div class="metric-note" id="varianceNote"></div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">On-Track Score</div>
+      <div class="metric-value" id="metricOnTrackScore">—</div>
+    </div>
+  </div>
+
+  <!-- ===== Trade Financial Summary ===== -->
+  <div class="metrics fin-metrics" id="finSummaryMetrics"></div>
+
+  <!-- ===== Trade Costs table ===== -->
+  <div class="card" style="margin-bottom:14px;">
+    <div class="trade-header">
+      <h2 style="margin:0;">Trade Costs</h2>
+      <button class="btn primary admin-only" id="btnAddTrade">+ Add Trade</button>
+    </div>
+    <div class="chips" id="tradeFilterTabs" style="margin-top:10px;"></div>
+    <div class="trade-table-wrap">
+      <table class="trade-table" id="tradeCostTable">
+        <thead>
+          <tr>
+            <th>Trade</th><th>Vendor</th><th>Scope</th><th>Milestone</th><th>Contract Value</th>
+            <th>Invoiced</th><th>Paid</th><th>Outstanding</th><th>Invoices</th><th>Status</th><th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="tradeCostTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ===== Site Rentals ===== -->
+  <div class="card" id="siteRentalsCard" style="margin-bottom:14px; display:none;">
+    <div class="trade-header">
+      <h2 style="margin:0;">Site Rentals</h2>
+    </div>
+    <div class="metric-note" style="padding:0 20px 10px;">Temporary fencing, portable toilets, bin/dumpster rentals, equipment rentals, etc. — add one as a Trade below and set its Category to "Site Rentals" to have it show up here instead of the main Trade Costs table. Its cost still counts toward the totals above.</div>
+    <div class="trade-table-wrap">
+      <table class="trade-table">
+        <thead>
+          <tr>
+            <th>Trade</th><th>Vendor</th><th>Scope</th><th>Milestone</th><th>Contract Value</th>
+            <th>Invoiced</th><th>Paid</th><th>Outstanding</th><th>Invoices</th><th>Status</th><th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="siteRentalsTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ===== Budget vs Actual ===== -->
+  <div class="card" id="budgetCard" style="margin-bottom:14px;">
+    <div class="trade-header">
+      <h2 style="margin:0;">Budget vs Actual</h2>
+      <div style="display:flex; align-items:center; gap:10px;">
+        <label class="metric-note admin-only" style="margin:0;">Actual Expense Basis
+          <select id="budgetBasisSelect" style="margin-left:6px;">
+            <option value="Invoice">Invoice Amount</option>
+            <option value="Paid">Paid Amount</option>
+            <option value="Manual">Manually Entered</option>
+          </select>
+        </label>
+        <span class="metric-note" id="budgetBasisReadonly" style="display:none;"></span>
+        <button class="btn primary admin-only" id="btnAddBudgetCategory">+ Add Category</button>
+      </div>
+    </div>
+    <div class="metrics fin-metrics" id="budgetSummaryMetrics"></div>
+    <div id="budgetAlerts"></div>
+    <div class="trade-table-wrap">
+      <table class="trade-table" id="budgetTable">
+        <thead>
+          <tr>
+            <th>Category</th><th>Budget</th><th>Committed</th><th>Invoiced</th><th>Paid</th>
+            <th>Actual</th><th>Variance</th><th>Variance %</th><th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="budgetTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ===== Gantt timeline ===== -->
+  <div class="card gantt-card">
+    <div class="trade-header">
+      <h2 style="margin:0;">Interactive Timeline</h2>
+      <button class="btn primary admin-only" id="btnAddMilestone">+ Add Milestone</button>
+    </div>
+    <div class="chips" id="statusFilters" style="padding:0 20px;"></div>
+    <div class="gantt-scroll">
+      <div class="gantt-wrap" id="ganttWrap">
+        <div class="gantt-months" id="ganttMonths"></div>
+        <div id="ganttBody"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mobile simplified list (shown <768px instead of Gantt) -->
+  <div class="mobile-list" id="mobileList"></div>
+
+  <!-- ===== Summary / Health / Upcoming / Activity ===== -->
+  <div class="grid2">
+    <div>
+      <div class="card" style="margin-bottom:14px;">
+        <h2>Upcoming Milestones</h2>
+        <div id="upcomingList"></div>
+      </div>
+      <div class="card">
+        <h2>Recent Activity</h2>
+        <div id="activityList"></div>
+        <div class="activity-pager" id="activityPager" style="display:none;">
+          <button class="btn" id="btnActivityPrev">Previous</button>
+          <span id="activityPageLabel"></span>
+          <button class="btn" id="btnActivityNext">Next</button>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="card" style="margin-bottom:14px;">
+        <h2>Schedule Health</h2>
+        <div class="health-row">
+          <span class="health-icon" id="healthIcon">🟢</span>
+          <span class="health-label" id="healthLabel">ON TRACK</span>
+        </div>
+        <div class="health-explain" id="healthExplain"></div>
+      </div>
+      <div class="card">
+        <h2>Project Summary</h2>
+        <div id="summaryGrid"></div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="appfooter">
+    <span><span id="footerProjectLabel">Project Milestone Schedule</span> &nbsp;·&nbsp; <span id="syncStatus">Connecting…</span> &nbsp;·&nbsp; <span id="roleBadge" class="role-badge">Client view (read-only)</span></span>
+    <span id="lastUpdated"></span>
+  </footer>
+</div>
+
+<!-- ===== Milestone detail / edit modal ===== -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="modalTitle">Milestone</h3>
+      <button class="icon-btn" id="btnCloseModal" style="font-size:22px;">×</button>
+    </div>
+    <div class="modal-tabs">
+      <button class="modal-tab active" id="tabBtnSchedule">Schedule</button>
+      <button class="modal-tab" id="tabBtnFinancials">💰 Trades</button>
+      <button class="modal-tab" id="tabBtnGallery">🖼️ Gallery</button>
+    </div>
+    <div class="modal-body" id="scheduleTabContent">
+      <div class="field admin-only">
+        <label>Description</label>
+        <textarea id="mDescription" placeholder="Optional longer description of this milestone"></textarea>
+      </div>
+      <div class="field">
+        <label>Dependencies</label>
+        <div class="dep-static" id="mDependency"></div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Start Date</label>
+          <input type="date" id="mStart">
+        </div>
+        <div class="field">
+          <label>Finish Date (calculated)</label>
+          <div class="dep-static" id="mFinishDisplay"></div>
+        </div>
+      </div>
+      <button class="link-btn admin-only" id="btnClearManualStart">Reset start to dependency-calculated date</button>
+      <div class="field-row">
+        <div class="field">
+          <label>Duration (business days)</label>
+          <input type="number" id="mDuration" min="1">
+        </div>
+        <div class="field">
+          <label>Status</label>
+          <select id="mStatus">
+            <option>Not Started</option>
+            <option>In Progress</option>
+            <option>Complete</option>
+            <option>Delayed</option>
+            <option>On Hold</option>
+          </select>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Progress</label>
+          <div class="range-row">
+            <input type="range" id="mProgress" min="0" max="100" step="5">
+            <span id="mProgressLabel">0%</span>
+          </div>
+        </div>
+        <div class="field">
+          <label>Priority</label>
+          <select id="mPriority">
+            <option>Low</option>
+            <option>Normal</option>
+            <option>High</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label>Assigned Trade</label>
+        <input type="text" id="mTrade">
+      </div>
+      <div class="field">
+        <label>Notes</label>
+        <textarea id="mNotes"></textarea>
+      </div>
+      <div class="modal-error" id="mError"></div>
+    </div>
+    <div class="modal-body" id="financialsTabContent" style="display:none;"></div>
+    <div class="modal-body" id="galleryTabContent" style="display:none;"></div>
+    <div class="modal-foot" id="scheduleModalFoot">
+      <button class="btn danger admin-only" id="btnDeleteModal">Delete</button>
+      <button class="btn admin-only" id="btnDuplicateModal">Duplicate</button>
+      <button class="btn admin-only" id="btnMoveUpModal" title="Move earlier in list">▲</button>
+      <button class="btn admin-only" id="btnMoveDownModal" title="Move later in list">▼</button>
+      <div style="flex:1;"></div>
+      <button class="btn" id="btnCancelModal">Cancel</button>
+      <button class="btn primary admin-only" id="btnSaveModal">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Trade detail / add / edit modal ===== -->
+<div class="modal-overlay" id="tradeModalOverlay">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="tradeModalTitle">Add Trade</h3>
+      <button class="icon-btn" id="btnCloseTradeModal" style="font-size:22px;">×</button>
+    </div>
+    <div class="modal-body" id="tradeModalBody"></div>
+    <div class="modal-foot">
+      <button class="btn" id="btnCancelTradeModal">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Budget category detail / add / edit modal ===== -->
+<div class="modal-overlay" id="budgetModalOverlay">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="budgetModalTitle">Add Budget Category</h3>
+      <button class="icon-btn" id="btnCloseBudgetModal" style="font-size:22px;">×</button>
+    </div>
+    <div class="modal-body" id="budgetModalBody"></div>
+    <div class="modal-foot">
+      <button class="btn" id="btnCancelBudgetModal">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Archive / Delete trade confirmation modal ===== -->
+<div class="modal-overlay" id="removeTradeOverlay">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-head">
+      <h3>Remove Trade</h3>
+    </div>
+    <div class="modal-body" id="removeTradeBody"></div>
+  </div>
+</div>
+
+<!-- ===== Admin Login modal ===== -->
+<div class="modal-overlay" id="loginModalOverlay">
+  <div class="modal" style="max-width:380px;">
+    <div class="modal-head">
+      <h3>Admin Login</h3>
+      <button class="icon-btn" id="btnCloseLoginModal" style="font-size:22px;">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="field">
+        <label>Email</label>
+        <input type="email" id="loginEmail" autocomplete="username">
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input type="password" id="loginPassword" autocomplete="current-password">
+      </div>
+      <div class="modal-error" id="loginError"></div>
+      <div class="metric-note">Everyone else viewing this site sees a read-only client view. Admin accounts are created in the Firebase console — see README.</div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" id="btnCancelLogin">Cancel</button>
+      <button class="btn primary" id="btnSubmitLogin">Log In</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Admin Panel modal ===== -->
+<div class="modal-overlay" id="adminPanelOverlay">
+  <div class="modal admin-panel-modal">
+    <div class="modal-head">
+      <h3>Admin Panel</h3>
+      <button class="icon-btn" id="btnCloseAdminPanel" style="font-size:22px;">×</button>
+    </div>
+    <div class="modal-tabs" id="adminPanelTabs">
+      <button class="modal-tab active" data-admin-tab="projects">Projects</button>
+      <button class="modal-tab" data-admin-tab="project">Project</button>
+      <button class="modal-tab" data-admin-tab="branding">Branding</button>
+      <button class="modal-tab" data-admin-tab="milestones">Milestones</button>
+      <button class="modal-tab" data-admin-tab="holidays">Holidays</button>
+    </div>
+    <div class="modal-body" id="adminPanelBody"></div>
+    <div class="modal-foot">
+      <button class="btn" id="btnCloseAdminPanel2">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Photo lightbox ===== -->
+<div class="lightbox-overlay" id="lightboxOverlay">
+  <button class="icon-btn lightbox-close" id="btnCloseLightbox">×</button>
+  <button class="lightbox-nav lightbox-prev" id="btnLightboxPrev">‹</button>
+  <img id="lightboxImg" alt="">
+  <button class="lightbox-nav lightbox-next" id="btnLightboxNext">›</button>
+  <div class="lightbox-caption" id="lightboxCaption"></div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="data.js"></script>
+<script src="script.js"></script>
+</body>
+</html>

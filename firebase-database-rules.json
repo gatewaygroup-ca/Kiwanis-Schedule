@@ -1,0 +1,32 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+
+    "projects": {
+      "$projectId": {
+        ".read": true,
+        ".write": "auth != null"
+      }
+    },
+
+    "project_registry": {
+      ".read": true,
+      ".write": "auth != null"
+    },
+
+    "project_registry_kiwanis": {
+      ".read": true,
+      ".write": "auth != null"
+    },
+
+    "schedule": {
+      ".read": true,
+      ".write": "auth != null"
+    },
+    "schedule_38niagara": {
+      ".read": true,
+      ".write": "auth != null"
+    }
+  }
+}
